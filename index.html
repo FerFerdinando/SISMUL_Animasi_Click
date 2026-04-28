@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>CLICK!</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/addons/p5.sound.min.js"></script>
+  <link rel="icon" href="favicon.ico" type="image/x-icon">
+  <style>
+    body { margin: 0; background: #000; display: flex; justify-content: center; align-items: center; min-height: 100vh; }
+    canvas { display: block; }
+  </style>
+</head>
+<body>
+  <script>
+    const SCALE = 8;
+    const LOGICAL_W = 80;
+    const LOGICAL_H = 60;
+    const DIGIT_W = 3;
+    const DIGIT_H = 5;
+    const DIGIT_SPACING = 1;
+    const LOAD_DURATION = 2500;
+    const CLICK_DURATION = 500;
+
+    let mainBuf;
+    let btnBuf, loadBuf, cntBuf;
+    let counter = 0;
+    let isLoading = false;
+    let loadStart = 0;
+    let buttonDisabled = false;
+    let buttonState = 'idle';
+    let clickStart = 0;
+    let rollAnim = null;
+    let vcrFont;
+    let countSound;
+
+    function preload() {
+      vcrFont = loadFont('better_vcr/Better VCR 6.1.ttf');
+      countSound = loadSound('Drone.mp3');
+    }
+
+    const DIGIT_MAPS = {
+      0: [[1,1,1],[1,0,1],[1,0,1],[1,0,1],[1,1,1]],
+      1: [[0,1,0],[1,1,0],[0,1,0],[0,1,0],[1,1,1]],
+      2: [[1,1,1],[0,0,1],[1,1,1],[1,0,0],[1,1,1]],
+      3: [[1,1,1],[0,0,1],[1,1,1],[0,0,1],[1,1,1]],
+      4: [[1,0,1],[1,0,1],[1,1,1],[0,0,1],[0,0,1]],
+      5: [[1,1,1],[1,0,0],[1,1,1],[0,0,1],[1,1,1]],
+      6: [[1,1,1],[1,0,0],[1,1,1],[1,0,1],[1,1,1]],
+      7: [[1,1,1],[0,0,1],[0,0,1],[0,0,1],[0,0,1]],
+      8: [[1,1,1],[1,0,1],[1,1,1],[1,0,1],[1,1,1]],
+      9: [[1,1,1],[1,0,1],[1,1,1],[0,0,1],[1,1,1]]
+    };
+
+    function setup() {
+      createCanvas(LOGICAL_W * SCALE, LOGICAL_H * SCALE);
+      noSmooth();
+      mainBuf = createGraphics(LOGICAL_W, LOGICAL_H);
+      mainBuf.noSmooth();
+      btnBuf = createGraphics(40, 20);
+      btnBuf.noSmooth();
+      loadBuf = createGraphics(60, 6);
+      loadBuf.noSmooth();
+      updateCounterBuffer();
+    }
+
+    function draw() {
+      background(0);
+      const now = millis();
+
+      updateButtonState(now);
+      mainBuf.background(0);
+
+      // Loading bar
+      if (isLoading) {
+        const elapsed = now - loadStart;
+        const progress = constrain(elapsed / LOAD_DURATION, 0, 1);
+        drawLoadingBar(progress);
+        applyGlitch(loadBuf, 0.1);
+        mainBuf.image(loadBuf, 10, 10);
+
+        if (elapsed >= LOAD_DURATION) {
+          isLoading = false;
+          buttonDisabled = false;
+          counter++;
+          countSound.play();
+          startRollAnimation(now);
+        }
+      }
+
+      // Counter
+      updateCounterBuffer();
+      if (rollAnim && now - rollAnim.start < rollAnim.duration) {
+        applyGlitch(cntBuf, 0.3);
+      } else {
+        rollAnim = null;
+      }
+      const cntW = cntBuf.width;
+      mainBuf.image(cntBuf, (LOGICAL_W - cntW) / 2, 20);
+
+      // Button
+      drawButton(now);
+      let glitchIntensity = 0;
+      if (buttonState === 'idle') glitchIntensity = 0.1;
+      else if (buttonState === 'hover') glitchIntensity = 0.3;
+      else if (buttonState === 'click') glitchIntensity = 0.8;
+      if (glitchIntensity > 0) applyGlitch(btnBuf, glitchIntensity);
+      mainBuf.image(btnBuf, 20, 30);
+
+      image(mainBuf, 0, 0, width, height);
+    }
+
+    function updateButtonState(now) {
+      if (buttonDisabled) {
+        buttonState = 'disabled';
+        return;
+      }
+      if (buttonState === 'click' && now - clickStart < CLICK_DURATION) return;
+      if (buttonState === 'click') buttonState = 'idle';
+      const bx = 20 * SCALE, by = 30 * SCALE, bw = 40 * SCALE, bh = 20 * SCALE;
+      buttonState = (mouseX >= bx && mouseX <= bx + bw && mouseY >= by && mouseY <= by + bh) ? 'hover' : 'idle';
+    }
+
+    function mousePressed() {
+      if (buttonDisabled) return;
+      const bx = 20 * SCALE, by = 30 * SCALE, bw = 40 * SCALE, bh = 20 * SCALE;
+      if (mouseX >= bx && mouseX <= bx + bw && mouseY >= by && mouseY <= by + bh) {
+        buttonState = 'click';
+        clickStart = millis();
+        isLoading = true;
+        loadStart = millis();
+        buttonDisabled = true;
+      }
+    }
+
+    function drawButton(now) {
+      btnBuf.background(0);
+      // Button body
+      btnBuf.fill(200, 0, 200);
+      btnBuf.noStroke();
+      btnBuf.rect(0, 0, 40, 20);
+      // 3D shading
+      btnBuf.fill(140, 0, 140);
+      btnBuf.rect(0, 0, 40, 1);
+      btnBuf.rect(0, 0, 1, 20);
+      btnBuf.fill(70, 0, 70);
+      btnBuf.rect(0, 19, 40, 1);
+      btnBuf.rect(39, 0, 1, 20);
+      // "CLICK!" label
+      btnBuf.fill(0, 0, 0);
+      btnBuf.textFont(vcrFont);
+      btnBuf.textSize(8);
+      btnBuf.textAlign(CENTER, CENTER);
+      btnBuf.text("CLICK!", 20, 10);
+      // Click press effect
+      if (buttonState === 'click' && now - clickStart < 100) {
+        btnBuf.fill(70, 0, 70);
+        btnBuf.rect(0, 0, 40, 20);
+      }
+    }
+
+    function drawLoadingBar(progress) {
+      loadBuf.background(0);
+      // Bar fill
+      loadBuf.fill(200, 0, 200);
+      loadBuf.noStroke();
+      loadBuf.rect(0, 0, 60 * progress, 6);
+      // 3D borders
+      loadBuf.fill(140, 0, 140);
+      loadBuf.rect(0, 0, 60, 1);
+      loadBuf.rect(0, 0, 1, 6);
+      loadBuf.fill(70, 0, 70);
+      loadBuf.rect(0, 5, 60, 1);
+      loadBuf.rect(59, 0, 1, 6);
+    }
+
+    function updateCounterBuffer() {
+      const digits = counter.toString();
+      const cntW = digits.length * DIGIT_W + (digits.length - 1) * DIGIT_SPACING;
+      if (!cntBuf || cntBuf.width !== cntW) {
+        cntBuf = createGraphics(Math.max(cntW, 1), DIGIT_H);
+        cntBuf.noSmooth();
+      }
+      cntBuf.background(0);
+      cntBuf.noStroke();
+      for (let i = 0; i < digits.length; i++) {
+        drawDigit(cntBuf, i * (DIGIT_W + DIGIT_SPACING), 0, parseInt(digits[i]));
+      }
+    }
+
+    function drawDigit(buf, x, y, d) {
+      const map = DIGIT_MAPS[d];
+      if (!map) return;
+      buf.fill(200, 0, 200);
+      for (let row = 0; row < DIGIT_H; row++) {
+        for (let col = 0; col < DIGIT_W; col++) {
+          if (map[row][col]) buf.rect(x + col, y + row, 1, 1);
+        }
+      }
+    }
+
+    function startRollAnimation(now) {
+      rollAnim = { start: now, duration: 1000 };
+    }
+
+    function applyGlitch(buf, intensity) {
+      buf.loadPixels();
+      const d = buf.pixels;
+      const w = buf.width;
+      const h = buf.height;
+      const chance = intensity * 0.05;
+
+      // Pixel flips
+      for (let i = 0; i < w * h; i++) {
+        if (random() < chance) {
+          const idx = i * 4;
+          if (d[idx] === 200 && d[idx + 2] === 200) {
+            d[idx] = 0;
+            d[idx + 2] = 0;
+          } else if (d[idx] === 0 && d[idx + 2] === 0) {
+            d[idx] = 200;
+            d[idx + 2] = 200;
+          }
+        }
+      }
+
+      // Line shifts
+      const lines = Math.floor(intensity * 2);
+      for (let l = 0; l < lines; l++) {
+        const y = Math.floor(random(h));
+        const shift = Math.floor(random(-3, 4));
+        if (shift === 0) continue;
+        const lineStart = y * w * 4;
+        const temp = d.slice(lineStart, lineStart + w * 4);
+        const newStart = lineStart + shift * 4;
+        if (newStart >= 0 && newStart + w * 4 <= d.length) {
+          d.set(temp, newStart);
+        }
+      }
+
+      // Block glitches
+      const blocks = Math.floor(intensity);
+      for (let b = 0; b < blocks; b++) {
+        const bx = Math.floor(random(w - 2));
+        const by = Math.floor(random(h - 2));
+        const block = [];
+        for (let y = 0; y < 2; y++) {
+          for (let x = 0; x < 2; x++) {
+            const idx = ((by + y) * w + (bx + x)) * 4;
+            block.push(d[idx], d[idx+1], d[idx+2], d[idx+3]);
+          }
+        }
+        const shiftX = Math.floor(random(-4, 5));
+        const newX = bx + shiftX;
+        if (newX >= 0 && newX + 2 <= w) {
+          for (let y = 0; y < 2; y++) {
+            for (let x = 0; x < 2; x++) {
+              const srcIdx = (y * 2 + x) * 4;
+              const dstIdx = ((by + y) * w + (newX + x)) * 4;
+              d[dstIdx] = block[srcIdx];
+              d[dstIdx+1] = block[srcIdx+1];
+              d[dstIdx+2] = block[srcIdx+2];
+              d[dstIdx+3] = block[srcIdx+3];
+            }
+          }
+        }
+      }
+
+      buf.updatePixels();
+    }
+  </script>
+</body>
+</html>
