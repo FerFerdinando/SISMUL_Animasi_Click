@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>No Facebook 🐸</title>
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/addons/p5.sound.min.js"></script>
+<style>
+body{margin:0;background:#1a0033;overflow:hidden;display:flex;justify-content:center;align-items:center;height:100vh}
+canvas{display:block;image-rendering:pixelated;}
+</style>
+</head>
+<body>
+<script>
+const W=80,H=60
+let S,holes=[],score=0,friendsCounter=0,likesDisplay="???",likesTimer=0
+let frogMood='normal',nextSpawn=0,fR=false,shakeTimer=0,shakeMag=0
+const OUTCOMES=["???","NaN","404","0xDEAD","-1","ERROR","💀","LOADING","NOPE","SAD!"]
+
+function recalcS(){
+  S=max(1,min(windowWidth/W,windowHeight/H))
+}
+
+function setup(){
+  recalcS()
+  createCanvas(windowWidth,windowHeight);noSmooth();textSize(S);textAlign(CENTER,CENTER)
+  for(let r=0;r<2;r++)for(let c=0;c<3;c++){
+    holes.push({
+      x:5+c*25,y:12+r*14,w:20,h:11,
+      active:false,appearTime:0,duration:1200,faceType:0,wahPlayed:false
+    })
+  }
+  document.fonts.ready.then(()=>{fR=true})
+  nextSpawn=millis()+1000
+}
+
+function windowResized(){recalcS();resizeCanvas(windowWidth,windowHeight)}
+
+function draw(){
+  background(26,0,51)
+  push();let ox=(width-W*S)/2,oy=(height-H*S)/2;translate(ox,oy)
+  if(fR)textFont('Press Start 2P');textSize(S)
+  
+  if(shakeTimer>0){shakeTimer--;if(shakeTimer%2===0){translate(random(-shakeMag,shakeMag),random(-shakeMag,shakeMag))}}
+  
+  fill(200,0,200)
+  text("No Facebook 🐸",40*S,3*S)
+  
+  fill(200,0,200);textAlign(LEFT,CENTER)
+  text("Friends: "+friendsCounter,4*S,7*S)
+  textAlign(RIGHT,CENTER)
+  text("Likes: "+likesDisplay,76*S,7*S)
+  if(millis()-likesTimer>3000){
+    likesDisplay=random(OUTCOMES);likesTimer=millis()
+  }
+  
+  for(let h of holes){
+    fill(40,0,60);noStroke()
+    ellipse((h.x+h.w/2)*S,(h.y+h.h/3)*S,h.w*S,5*S)
+    
+    if(h.active){
+      let e=millis()-h.appearTime,p=constrain(e/120,0,1)
+      let fy=(h.y-p*7)
+      drawFriend(h.x*S,fy*S,h.w*S,h.h*S,h.faceType)
+      if(e>h.duration&&!h.wahPlayed){h.active=false;h.wahPlayed=true;playWah()}
+    }
+  }
+  
+  if(millis()>nextSpawn){spawnFriend();nextSpawn=millis()+random(800,2500)}
+  
+  textAlign(CENTER,CENTER);fill(200,0,200)
+  text("Popped: "+score,40*S,44*S)
+  
+  drawFrog(40,52,frogMood)
+  pop()
+}
+
+function drawFriend(x,y,w,h,t){
+  let hw=w/2,hh=h/2
+  fill(255,220,0);noStroke()
+  ellipse(x+hw,y+hh,w,h)
+  fill(0)
+  if(t%3===0){
+    ellipse(x+hw-S,y+hh-2*S/8,3*S/8,3*S/8)
+    ellipse(x+hw+S,y+hh-2*S/8,3*S/8,3*S/8)
+    noFill();stroke(0);strokeWeight(S/8);arc(x+hw,y+hh+2*S/8,6*S/8,3*S/8,0,PI);noStroke()
+  }else if(t%3===1){
+    ellipse(x+hw-3*S/8,y+hh-1*S/8,4*S/8,4*S/8)
+    ellipse(x+hw+3*S/8,y+hh-1*S/8,4*S/8,4*S/8)
+    fill(255,220,0);rect(x+hw-1*S/8,y+hh-1*S/8,2*S/8,4*S/8)
+    noFill();stroke(0);strokeWeight(S/8);arc(x+hw,y+hh+2*S/8,4*S/8,2*S/8,0,PI);noStroke()
+  }else{
+    fill(0);rect(x+hw-4*S/8,y+hh-1*S/8,8*S/8,3*S/8)
+    fill(255,220,0);rect(x+hw-2*S/8,y+hh-1*S/8,4*S/8,3*S/8)
+    noFill();stroke(0);strokeWeight(S/8);arc(x+hw,y+hh+3*S/8,5*S/8,2*S/8,0,PI);noStroke()
+  }
+}
+
+function drawFrog(cx,cy,m){
+  let x=cx*S,y=cy*S
+  push();translate(x,y)
+  if(m==='gone'){pop();return}
+  fill(0,200,0);noStroke()
+  if(m==='flat'){
+    ellipse(0,0,22*S/8,5*S/8);fill(0);ellipse(-5*S/8,-S/8,3*S/8,S/8);ellipse(5*S/8,-S/8,3*S/8,S/8)
+    fill(100,150,255);ellipse(-8*S/8,0,3*S/8,2*S/8);ellipse(8*S/8,0,3*S/8,2*S/8)
+  }else{
+    ellipse(0,0,16*S/8,10*S/8)
+    fill(0,255,0);ellipse(-5*S/8,-5*S/8,7*S/8,6*S/8);ellipse(5*S/8,-5*S/8,7*S/8,6*S/8)
+    fill(0);ellipse(-5*S/8,-5*S/8,3*S/8,3*S/8);ellipse(5*S/8,-5*S/8,3*S/8,3*S/8)
+    fill(0,160,0);rect(-9*S/8,3*S/8,5*S/8,5*S/8);rect(4*S/8,3*S/8,5*S/8,5*S/8)
+    if(m==='cry'){
+      fill(100,150,255);rect(-7*S/8,-S/8,2*S/8,4*S/8);rect(-4*S/8,0,2*S/8,3*S/8)
+    }else{
+      noFill();stroke(0);strokeWeight(S/8);arc(0,2*S/8,5*S/8,2*S/8,0,PI);noStroke()
+    }
+  }
+  pop()
+}
+
+function spawnFriend(){
+  let ia=holes.filter(h=>!h.active)
+  if(ia.length===0)return
+  let h=random(ia);h.active=true;h.appearTime=millis()
+  h.duration=random(1000,2000);h.faceType=floor(random(3));h.wahPlayed=false
+}
+
+function mousePressed(){
+  let ox=(width-W*S)/2,oy=(height-H*S)/2
+  let lx=(mouseX-ox)/S,ly=(mouseY-oy)/S
+  for(let h of holes){
+    if(!h.active)continue
+    let e=millis()-h.appearTime,p=constrain(e/120,0,1)
+    let fy=h.y-p*7
+    if(lx>=h.x&&lx<=h.x+h.w&&ly>=fy&&ly<=fy+h.h){
+      h.active=false;score++;playBoing();updateFrog()
+      shakeTimer=6;shakeMag=2
+      break
+    }
+  }
+}
+
+function playBoing(){
+  let o=new p5.Oscillator('square');o.amp(0.2)
+  o.freq(500);o.start();o.freq(800,0.08)
+  setTimeout(()=>{o.freq(600,0.05)},80)
+  setTimeout(()=>o.stop(),200)
+}
+
+function playWah(){
+  let o=new p5.Oscillator('square');o.amp(0.15)
+  o.freq(300);o.start();o.freq(200,0.2);o.freq(100,0.4)
+  setTimeout(()=>o.stop(),500)
+}
+
+function updateFrog(){
+  if(score>=30)frogMood='gone'
+  else if(score>=20)frogMood='flat'
+  else if(score>=10)frogMood='cry'
+  if(score===10||score===20||score===30){playSad();shakeTimer=12;shakeMag=4}
+}
+
+function playSad(){
+  let o=new p5.Oscillator('square');o.amp(0.2)
+  o.freq(400);o.start()
+  o.freq(350,0.2);o.freq(300,0.4);o.freq(250,0.6);o.freq(200,0.8)
+  setTimeout(()=>o.stop(),1000)
+}
+</script>
+</body>
+</html>

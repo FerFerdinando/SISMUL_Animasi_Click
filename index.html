@@ -6,8 +6,25 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/addons/p5.sound.min.js"></script>
   <link rel="icon" href="favicon.ico" type="image/x-icon">
   <style>
-    body { margin: 0; background: #000; display: flex; justify-content: center; align-items: center; min-height: 100vh; }
+    body { margin: 0; background: #000; display: flex; flex-direction: column; justify-content: center; align-items: center; min-height: 100vh; gap: 16px; }
     canvas { display: block; }
+    .nav { display: flex; gap: 10px; padding-bottom: 20px; }
+    .nav a {
+      font-family: 'Courier New', monospace; font-size: 12px; font-weight: bold;
+      color: #c0c; text-decoration: none;
+      background: #000; border: 2px solid #c0c;
+      padding: 6px 12px; cursor: pointer;
+      box-shadow: 3px 3px 0 #800080, inset 1px 1px 0 #e0e, inset -1px -1px 0 #400040;
+      transition: all 0.05s;
+    }
+    .nav a:hover {
+      background: #c0c; color: #000;
+      box-shadow: 1px 1px 0 #800080, inset 1px 1px 0 #e0e, inset -1px -1px 0 #400040;
+    }
+    .nav a:active {
+      transform: translate(2px, 2px);
+      box-shadow: 1px 1px 0 #800080;
+    }
   </style>
 </head>
 <body>
@@ -268,5 +285,11 @@
       buf.updatePixels();
     }
   </script>
+  <div class="nav">
+    <a href="Facebook/">No Facebook 🐸</a>
+    <a href="X/">No X 🐸</a>
+    <a href="Instagram/">No Instagram 🐸</a>
+    <a href="4o4/">Social 404 🐸</a>
+  </div>
 </body>
 </html>

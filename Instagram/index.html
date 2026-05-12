@@ -1,0 +1,390 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>No Instagram 🐸</title>
+<link href="https://fonts.googleapis.com/css2?family=Silkscreen&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/addons/p5.sound.min.js"></script>
+<style>
+body{margin:0;background:#1a0033;overflow:hidden;display:flex;justify-content:center;align-items:center;height:100vh}
+canvas{display:block;image-rendering:pixelated}
+</style>
+</head>
+<body>
+<script>
+const W=80,H=60
+let S,likes=0,photos=[],filterIdx=0
+let gaugePos=50,gaugeDir=1,gaugeSpeed=2
+let showingResult=false,resultStart=0,fR=false
+let shutterFlash=0
+let shockwave=0,lastFlash=0
+const FILTERS=["Normal","VHS","Heat","Invert","Glitch","Soup"]
+let frogImg,frogX=0.5,frogY=0.7,sceneryIdx=0,capturePending=false
+const SCENERIES=[
+  {name:"Day",sky:[70,160,230],ground:[50,130,50],water:[40,100,180]},
+  {name:"Sunset",sky:[200,70,60],ground:[140,70,30],water:[180,50,80]},
+  {name:"Night",sky:[10,10,50],ground:[20,15,30],water:[5,5,60]},
+  {name:"Dawn",sky:[180,80,100],ground:[100,70,40],water:[140,60,80]},
+]
+const FROG_COMMENTS={
+  "TOO DARK":"Too dark bruh, turn on the lights 💡",
+  "OVEREXPOSED":"Overexposed! Tone it down 📸",
+  "FINGER ON LENS":"Clean yo lens 👆",
+  "WET LENS":"Did you just spit on it? 💦",
+  "FROG LEFT":"Bruh I'm out 🏃‍♂️",
+  "BLURRY":"Stop shakin'! ☕",
+  "BUG ON SCREEN":"Got photobombed 🪳",
+  "NOT A FROG":"That ain't even me 🤨",
+  "SUN IN EYES":"Too bright my guy 😎",
+  "FROG BLINKED":"I blinked, sue me 😑",
+}
+let commentText="",commentStart=0,commentDone=true
+let viewingPhoto=-1
+
+function preload(){frogImg=loadImage("../tokodok.png")}
+
+function recalcS(){S=max(1,min(windowWidth/W,windowHeight/H))}
+
+function setup(){
+  recalcS();createCanvas(windowWidth,windowHeight);noSmooth();textSize(S);textAlign(CENTER,CENTER)
+  document.fonts.ready.then(()=>{fR=true})
+}
+
+function windowResized(){recalcS();resizeCanvas(windowWidth,windowHeight)}
+
+function drawScene(vx,vy,vw,vh){
+  let x=vx*S,y=vy*S,w=vw*S,h=vh*S
+  let sc=S/8,scn=SCENERIES[sceneryIdx]
+  fill(scn.sky);noStroke()
+  rect(x,y,w,h-2*sc)
+  fill(scn.ground)
+  rect(x,y+h-2*sc,w,2*sc)
+  let fx=x+frogX*w,fy=y+frogY*h
+  fill(scn.water)
+  ellipse(fx,fy+1.5*sc,4*sc,2*sc)
+
+  if(sceneryIdx===0){
+    fill(60,140,60,80);noStroke()
+    triangle(x,y+h*0.55,x+w*0.2,y+h*0.25,x+w*0.4,y+h*0.55)
+    fill(40,110,40,60);triangle(x+w*0.25,y+h*0.55,x+w*0.55,y+h*0.2,x+w*0.85,y+h*0.55)
+    fill(255,230,100,80);ellipse(x+w*0.8,y+h*0.15,18*sc,18*sc)
+    fill(255,255,255,60);ellipse(x+w*0.25,y+h*0.12,28*sc,7*sc);ellipse(x+w*0.3,y+h*0.1,18*sc,5*sc)
+  }else if(sceneryIdx===1){
+    fill(80,30,50,80);noStroke()
+    triangle(x,y+h*0.6,x+w*0.3,y+h*0.3,x+w*0.6,y+h*0.6)
+    fill(100,40,60,60);triangle(x+w*0.3,y+h*0.6,x+w*0.6,y+h*0.35,x+w,y+h*0.6)
+    fill(255,180,50,60);ellipse(x+w*0.8,y+h*0.25,24*sc,24*sc)
+    fill(200,120,60,40);ellipse(x+w*0.3,y+h*0.2,32*sc,8*sc);ellipse(x+w*0.35,y+h*0.18,18*sc,6*sc)
+  }else if(sceneryIdx===2){
+    fill(15,10,30);noStroke()
+    triangle(x,y+h*0.7,x+w*0.4,y+h*0.4,x+w*0.8,y+h*0.7)
+    triangle(x+w*0.2,y+h*0.7,x+w*0.6,y+h*0.45,x+w,y+h*0.7)
+    fill(255,255,255,frameCount%3===0?180:60)
+    for(let i=0;i<20;i++){ellipse(x+random(2,62)*S,y+random(2,14)*S,random(2,4)*sc,random(2,4)*sc)}
+    fill(255,255,200,80);ellipse(x+56*S,y+5*S,16*sc,16*sc)
+    fill(255,255,200,25);ellipse(x+56*S,y+5*S,24*sc,24*sc)
+  }else if(sceneryIdx===3){
+    fill(100,40,60,70);noStroke()
+    triangle(x,y+h*0.6,x+w*0.3,y+h*0.35,x+w*0.6,y+h*0.6)
+    fill(120,50,70,50);triangle(x+w*0.3,y+h*0.6,x+w*0.6,y+h*0.4,x+w,y+h*0.6)
+    fill(255,200,100,70);ellipse(x+w*0.15,y+h*0.3,20*sc,20*sc)
+    fill(220,150,130,40);ellipse(x+w*0.7,y+h*0.18,35*sc,9*sc);ellipse(x+w*0.75,y+h*0.16,20*sc,6*sc)
+  }
+
+  let hop=shutterFlash>0?random(-sc*0.5,sc*0.5):0
+  if(frogImg){
+    let fs=vh*S*0.3
+    image(frogImg,fx-fs/2,fy+hop-fs/2,fs,fs)
+  }
+  if(filterIdx===1){
+    fill(255,0,255,30);rect(x,y,w,h)
+    for(let i=0;i<3;i++){fill(0,255,255,20);rect(x+random(w),y,2,h)}
+  }else if(filterIdx===2){
+    for(let i=0;i<h;i+=3){
+      fill(map(i,0,h,255,0),0,map(i,0,h,0,255),40)
+      rect(x,y+i,w,3)
+    }
+  }else if(filterIdx===3){
+    fill(255,0,170,20);rect(x,y,w,h)
+    for(let i=0;i<5;i++){fill(0,255,100,10);rect(x+random(w),y+random(h),random(20),random(5))}
+  }else if(filterIdx===4){
+    for(let i=0;i<8;i++){
+      fill(random([255,0,170,100]),random(255),random(255),80)
+      rect(x+random(w),y+random(h),random(30),random(8))
+    }
+  }else if(filterIdx===5){
+    fill(200,100,0,30);rect(x,y,w,h)
+    for(let i=0;i<12;i++){
+      fill(random(255),random(255),random(255),80)
+      ellipse(x+random(w),y+random(h),random(12),random(12))
+    }
+  }
+}
+
+function draw(){
+  let bg=color(20,0,30)
+  if(filterIdx===1)bg=color(10,0,20)
+  else if(filterIdx===2)bg=color(40,0,20)
+  else if(filterIdx===3)bg=color(0,0,30)
+  else if(filterIdx===4)bg=color(20,10,30)
+  else if(filterIdx===5)bg=color(10,0,20)
+  background(bg)
+  if(fR){textFont('Silkscreen');textSize(S)}
+  
+  if(filterIdx===4&&frameCount%3===0)
+    for(let i=0;i<15;i++){fill(random(255),random(255),random(255),60);rect(random(width),random(height),random(40),random(10))}
+  
+  push();let ox=(width-W*S)/2,oy=(height-H*S)/2;translate(ox,oy)
+  
+  let bfX=40*S,bfY=5*S+sin(frameCount*0.04)*S*0.4
+  push();translate(bfX,bfY);scale(4)
+  fill(0,180,0);noStroke()
+  ellipse(0,0,10*S/8,7*S/8)
+  fill(0,220,0)
+  ellipse(-4*S/8,-4*S/8,5*S/8,4*S/8);ellipse(4*S/8,-4*S/8,5*S/8,4*S/8)
+  fill(0);ellipse(-4*S/8,-4*S/8,2*S/8,2*S/8);ellipse(4*S/8,-4*S/8,2*S/8,2*S/8)
+  fill(0,140,0);rect(-5*S/8,2*S/8,3*S/8,3*S/8);rect(2*S/8,2*S/8,3*S/8,3*S/8)
+  noFill();stroke(0);strokeWeight(S/8);arc(0,S/8,3*S/8,S/8,0,PI);noStroke()
+  pop()
+  if(!commentDone&&commentText){
+    let elapsed=millis()-commentStart
+    let chars=min(floor(elapsed/50),commentText.length)
+    if(chars>=commentText.length&&elapsed>commentText.length*50+3000)commentDone=true
+    else{fill(255);textAlign(LEFT,TOP);textSize(S*0.7)
+      text(commentText.substring(0,chars),bfX+6*S,bfY-1.5*S)
+      textAlign(CENTER,CENTER);textSize(S)}
+  }
+  
+  let vx=8,vy=10,vw=64,vh=18
+  fill(30,0,50);noStroke()
+  rect(vx*S,vy*S,vw*S,vh*S)
+  stroke(255,0,170,100);noFill();strokeWeight(max(ceil(S/8),1))
+  rect(vx*S,vy*S,vw*S,vh*S);noStroke()
+  
+  drawScene(vx+0.5,vy+0.5,vw-1,vh-1)
+  
+  if(capturePending&&photos.length>0){
+    let ci=get(round(ox+vx*S),round(oy+vy*S),round(vw*S),round(vh*S))
+    photos[photos.length-1].img=ci
+    capturePending=false
+  }
+  
+  textSize(S)
+  fill(255)
+  text("Filters: "+FILTERS[filterIdx],40*S,29*S)
+  fill(255,100)
+  textSize(S*0.75)
+  text("← → filters  ↑ ↓ scenery",40*S,30.5*S)
+  fill(255,200)
+  text("Scenery: "+SCENERIES[sceneryIdx].name,40*S,32*S)
+  
+  gaugePos+=gaugeDir*gaugeSpeed
+  if(gaugePos>95||gaugePos<5)gaugeDir*=-1
+  
+  textSize(S)
+  fill(255,150)
+  text("SPACE to snap",40*S,36.5*S)
+  
+  fill(255,100)
+  textSize(S*0.65)
+  text("R to reset",40*S,38.5*S)
+  textSize(S)
+  
+  let py=42,px=2
+  for(let i=0;i<6;i++){
+    let ix=px+i*12.5,iy=py
+    fill(30,0,50);noStroke()
+    rect(ix*S,iy*S,12*S,5*S)
+    stroke(255,0,170,50);noFill();strokeWeight(max(ceil(S/12),1))
+    rect(ix*S,iy*S,12*S,5*S);noStroke()
+    if(i<photos.length){
+      if(photos[i].img){
+        image(photos[i].img,ix*S+1*S,iy*S+1*S,10*S,3*S)
+      }else{
+        fill(photos[i].c1,photos[i].c2,photos[i].c3)
+        rect(ix*S+1*S,iy*S+1*S,10*S,3*S)
+      }
+      fill(255,0,170,150)
+      textAlign(LEFT,CENTER);textSize(S*0.55)
+      text((i+1)+"",ix*S+1*S,iy*S+4*S)
+      textSize(S)
+    }else{
+      fill(255,0,170,30)
+      textAlign(CENTER,CENTER);textSize(S*0.7)
+      text("_",ix*S+6*S,iy*S+2.5*S)
+      textSize(S)
+    }
+  }
+  
+  if(showingResult&&millis()-resultStart>=3000){
+    showingResult=false
+  }
+  
+  
+  
+  if(showingResult&&photos.length>0){
+    let last=photos[photos.length-1]
+    fill(255,0,170,200)
+    textAlign(CENTER,CENTER);textSize(S*0.75)
+    text(last.label,40*S,58*S)
+    textSize(S)
+  }
+  pop()
+  
+  if(shockwave>0){
+    noFill();stroke(255,255,255,shockwave*3)
+    strokeWeight(2)
+    rect(ox,oy,W*S,H*S)
+    noStroke()
+    shockwave-=0.03
+  }
+  
+  if(shutterFlash>0){
+    fill(255,255,255,shutterFlash)
+    rect(0,0,width,height)
+    shutterFlash=max(0,shutterFlash-25)
+  }
+  if(viewingPhoto>=0&&viewingPhoto<photos.length&&photos[viewingPhoto].img){
+    let img=photos[viewingPhoto].img
+    let iw=img.width,ih=img.height
+    let maxW=width*0.85,maxH=height*0.7
+    let sc2=min(maxW/iw,maxH/ih)
+    let dw=iw*sc2,dh=ih*sc2
+    let dx=(width-dw)/2,dy=(height-dh)/2
+    fill(0,0,0,210);noStroke();rect(0,0,width,height)
+    image(img,dx,dy,dw,dh)
+    fill(0,0,0,180);noStroke()
+    rect(width/2-10*S,dy+dh-S*0.5,20*S,4*S)
+    fill(255,255,255,220);textAlign(CENTER,CENTER);textSize(S*1.8)
+    text(photos[viewingPhoto].label,width/2,dy+dh+S*1.5)
+    fill(255,100);textSize(S*0.55)
+    text("click anywhere or press any key",width/2,dy+dh+S*3)
+  }
+}
+
+function drawFrog(cx,cy){
+  let x=cx*S,y=cy*S
+  push();translate(x,y)
+  fill(0,180,0);noStroke()
+  ellipse(0,0,10*S/8,7*S/8)
+  fill(0,220,0)
+  ellipse(-4*S/8,-4*S/8,5*S/8,4*S/8);ellipse(4*S/8,-4*S/8,5*S/8,4*S/8)
+  fill(0);ellipse(-4*S/8,-4*S/8,2*S/8,2*S/8);ellipse(4*S/8,-4*S/8,2*S/8,2*S/8)
+  fill(0,140,0);rect(-5*S/8,2*S/8,3*S/8,3*S/8);rect(2*S/8,2*S/8,3*S/8,3*S/8)
+  noFill();stroke(0);strokeWeight(S/8);arc(0,S/8,3*S/8,S/8,0,PI);noStroke()
+  pop()
+}
+
+function mousePressed(){
+  if(viewingPhoto>=0){viewingPhoto=-1;return false}
+  let ox=(width-W*S)/2,oy=(height-H*S)/2,py=42,px=2
+  for(let i=0;i<photos.length;i++){
+    let ix=ox+(px+i*12.5)*S,iy=oy+py*S
+    if(mouseX>=ix&&mouseX<=ix+12*S&&mouseY>=iy&&mouseY<=iy+5*S){
+      viewingPhoto=i;return false
+    }
+  }
+  return moveFrog()
+}
+function mouseDragged(){return moveFrog()}
+function moveFrog(){
+  let ox=(width-W*S)/2,oy=(height-H*S)/2,vx=8,vy=10,vw=64,vh=18
+  let vfX=ox+vx*S,vfY=oy+vy*S,vfW=vw*S,vfH=vh*S
+  if(mouseX>=vfX&&mouseX<=vfX+vfW&&mouseY>=vfY&&mouseY<=vfY+vfH){
+    let fs=vh*S*0.3
+    let mx=fs/(2*vfW),my=fs/(2*vfH)
+    frogX=constrain((mouseX-vfX)/vfW,mx,1-mx)
+    frogY=constrain((mouseY-vfY)/vfH,my,1-my)
+    return false
+  }
+  return false
+}
+
+function keyPressed(){
+  if(viewingPhoto>=0){viewingPhoto=-1;return false}
+  if(keyCode===38){sceneryIdx=(sceneryIdx+1)%SCENERIES.length;return false}
+  if(keyCode===40){sceneryIdx=(sceneryIdx-1+SCENERIES.length)%SCENERIES.length;return false}
+  if(key==='r'||key==='R'){
+    photos=[];likes=0;gaugePos=50;showingResult=false
+    shutterFlash=0;shockwave=0;commentDone=true
+    return false
+  }
+  if(keyCode===32&&shutterFlash===0&&!showingResult&&photos.length<6){takePhoto();return false}
+  if((keyCode===39||keyCode===37)&&shutterFlash===0){
+    filterIdx=keyCode===39?(filterIdx+1)%FILTERS.length:(filterIdx-1+FILTERS.length)%FILTERS.length
+    gaugeSpeed=filterIdx===1?5:filterIdx===4?random(1,10):2
+    playFilterSound();return false
+  }
+  return false
+}
+
+function keyTyped(){return false}
+
+function takePhoto(){
+  shutterFlash=255;playShutter()
+  let z=abs(gaugePos-50)/50
+  let outcome
+  if(z>0.8)outcome=random(["TOO DARK","OVEREXPOSED"])
+  else if(z>0.5)outcome=random(["FINGER ON LENS","WET LENS","FROG LEFT"])
+  else if(z>0.2)outcome=random(["BLURRY","BUG ON SCREEN","NOT A FROG"])
+  else outcome=random(["FROG BLINKED","SUN IN EYES","BLURRY"])
+  
+  let c1=random(50,200),c2=random(0,50),c3=random(50,200)
+  if(outcome==="TOO DARK"){c1=10;c2=5;c3=15}
+  else if(outcome==="OVEREXPOSED"){c1=255;c2=255;c3=255}
+  else if(outcome==="FROG LEFT"){c1=0;c2=80;c3=150}
+  else if(outcome==="FINGER ON LENS"){c1=180;c2=100;c3=50}
+  
+  photos.push({label:outcome,c1:c1,c2:c2,c3:c3})
+  capturePending=true
+  showingResult=true;resultStart=millis()
+  commentText=FROG_COMMENTS[outcome]||"";commentStart=millis();commentDone=false
+  if(z<=0.2)likes+=5
+  else if(z<=0.5)likes+=2
+  shockwave=3
+  playScratch()
+  if(z>0.7)playWah()
+  else playBoing()
+}
+
+function playShutter(){
+  let o=new p5.Oscillator('square');o.amp(0.3)
+  o.freq(1000);o.start()
+  setTimeout(()=>{o.freq(500)},30)
+  setTimeout(()=>o.stop(),80)
+  let o2=new p5.Oscillator('sine');o2.amp(0.15)
+  o2.freq(60);o2.start()
+  setTimeout(()=>o2.stop(),100)
+}
+
+function playScratch(){
+  setTimeout(()=>{
+    let o=new p5.Oscillator('sawtooth');o.amp(0.1)
+    o.freq(200);o.start();o.freq(800,0.1);o.freq(100,0.2)
+    setTimeout(()=>o.stop(),300)
+  },150)
+}
+
+function playFilterSound(){
+  let o=new p5.Oscillator('square');o.amp(0.1)
+  o.freq(600);o.start()
+  setTimeout(()=>{o.freq(800)},50)
+  setTimeout(()=>o.stop(),100)
+}
+
+function playBoing(){
+  let o=new p5.Oscillator('square');o.amp(0.2)
+  o.freq(500);o.start();o.freq(800,0.08)
+  setTimeout(()=>{o.freq(600,0.05)},80)
+  setTimeout(()=>o.stop(),200)
+}
+
+function playWah(){
+  let o=new p5.Oscillator('square');o.amp(0.15)
+  o.freq(300);o.start();o.freq(200,0.2);o.freq(100,0.4)
+  setTimeout(()=>o.stop(),500)
+}
+</script>
+</body>
+</html>

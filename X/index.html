@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>No X 🐸</title>
+<link href="https://fonts.googleapis.com/css2?family=VT323&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/addons/p5.sound.min.js"></script>
+<style>
+body{margin:0;background:#001a00;overflow:hidden;display:flex;justify-content:center;align-items:center;height:100vh}
+canvas{display:block;image-rendering:pixelated}
+</style>
+</head>
+<body>
+<script>
+const W=80,H=60
+let S,feed=[],rpm=0,postCount=0,lastPostTime=0
+let typing="",cursorTimer=0,typingChanged=false
+let followers=0,trendIndex=0,trendTimer=0
+let frogHop=0,fR=false
+const TRENDS=["ribbit2026","frogcouncil","bugs","lilypadlife","tongue","moshpit","amphibiangang"]
+const chars=['R','I','B','B','I','T']
+
+function recalcS(){S=max(1,min(windowWidth/W,windowHeight/H))}
+
+function setup(){
+  recalcS();createCanvas(windowWidth,windowHeight);noSmooth();textSize(S);textAlign(CENTER,CENTER)
+  document.fonts.ready.then(()=>{fR=true})
+  for(let i=0;i<6;i++)feed.push({text:"ribbit",time:millis()-i*3000})
+  cursorTimer=millis();trendTimer=millis()
+}
+
+function windowResized(){recalcS();resizeCanvas(windowWidth,windowHeight)}
+
+function draw(){
+  background(0,26,0)
+  push();let ox=(width-W*S)/2,oy=(height-H*S)/2;translate(ox,oy)
+  if(fR){textFont('VT323');textSize(S)}
+  
+  fill(0,255,65)
+  text("No X 🐸",40*S,3*S)
+  
+  textAlign(LEFT,CENTER)
+  text("Followers: "+followers,4*S,7*S)
+  
+  textAlign(RIGHT,CENTER)
+  if(millis()-trendTimer>2000){trendIndex=(trendIndex+1)%TRENDS.length;trendTimer=millis()}
+  fill(0,200,50)
+  text("#"+TRENDS[trendIndex],76*S,7*S)
+  
+  let feedY=10
+  for(let i=max(0,feed.length-6);i<feed.length;i++){
+    let f=feed[i],age=(millis()-f.time)/1000
+    fill(0,255,65,map(age,0,30,255,30))
+    textAlign(LEFT,CENTER)
+    text(f.text,6*S,feedY*S)
+    feedY+=3
+  }
+  textAlign(RIGHT,CENTER)
+  fill(0,255,65,80)
+  text("RPM: "+nf(rpm,0,1),76*S,25*S)
+  
+  fill(0,40,0);noStroke()
+  rect(4*S,33*S,72*S,8*S)
+  stroke(0,255,65);noFill();strokeWeight(max(ceil(S/8),1))
+  rect(4*S,33*S,72*S,8*S);noStroke()
+  
+  if(millis()-cursorTimer>500){typingChanged=true;cursorTimer=millis()}
+  let showText=typing+(cursorTimer%1000<500?'|':' ')
+  if(typing.length===0)showText=(cursorTimer%1000<500?'|':' ')
+  
+  fill(0,255,65)
+  textAlign(LEFT,CENTER)
+  text(showText,6*S,37*S)
+  
+  fill(0,255,65,100)
+  textAlign(CENTER,CENTER)
+  text("type — press [enter] to post",40*S,43*S)
+  
+  drawFrog(40,51)
+  
+  if(millis()-lastPostTime>60000&&postCount>0)rpm=max(0,rpm-0.1)
+  pop()
+}
+
+function drawFrog(cx,cy){
+  let x=cx*S,y=cy*S
+  if(frogHop>0)frogHop--
+  let hopY=frogHop>0?-frogHop*S/8:0
+  push();translate(x,y+hopY+sin(millis()/200)*S/4)
+  let h=sin(millis()/150)*S/8
+  fill(0,200,0);noStroke()
+  ellipse(0,0,14*S/8,9*S/8)
+  fill(0,255,0)
+  ellipse(-5*S/8,-5*S/8-h,6*S/8,5*S/8);ellipse(5*S/8,-5*S/8-h,6*S/8,5*S/8)
+  fill(0);ellipse(-5*S/8,-5*S/8-h,2*S/8,2*S/8);ellipse(5*S/8,-5*S/8-h,2*S/8,2*S/8)
+  fill(0,160,0);rect(-8*S/8,2*S/8,4*S/8,4*S/8);rect(4*S/8,2*S/8,4*S/8,4*S/8)
+  fill(0,180,0);rect(-3*S/8,-2*S/8,2*S/8,S/8);rect(S/8,-2*S/8,2*S/8,S/8)
+  noFill();stroke(0);strokeWeight(S/8)
+  arc(0,S/8,5*S/8,2*S/8,0,PI);noStroke()
+  fill(200,0,0,150);ellipse(-2*S/8,0,2*S/8,2*S/8);ellipse(2*S/8,0,2*S/8,2*S/8)
+  pop()
+}
+
+function postRibbit(){
+  feed.push({text:"ribbit",time:millis()})
+  postCount++;let now=millis()
+  if(now-lastPostTime<60000&&postCount>1)
+    rpm=postCount/((now-(lastPostTime>0?lastPostTime:now-1000))/60000)
+  lastPostTime=now;frogHop=8;playRibbit()
+}
+
+function playRibbit(){
+  let o=new p5.Oscillator('square');o.amp(0.2)
+  o.freq(200);o.start()
+  o.freq(400,0.05);o.freq(200,0.1);o.freq(500,0.15);o.freq(300,0.2)
+  setTimeout(()=>o.stop(),250)
+}
+
+function playClick(){
+  let o=new p5.Oscillator('square');o.amp(0.08)
+  o.freq(800);o.start()
+  setTimeout(()=>o.stop(),30)
+}
+
+function keyPressed(){
+  if(keyCode===ENTER){if(typing.length>0){postRibbit();typing=""}return false}
+  if(keyCode===BACKSPACE){typing=typing.slice(0,-1);return false}
+  if(keyCode===SHIFT||keyCode===CONTROL||keyCode===ALT||keyCode===META)return false
+  if(key&&key.length===1&&typing.length<50){
+    playClick();typing+=chars[typing.length%6]
+  }
+  return false
+}
+
+function keyTyped(){return false}
+</script>
+</body>
+</html>
