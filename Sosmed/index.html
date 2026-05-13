@@ -7,8 +7,8 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/addons/p5.sound.min.js"></script>
 <style>
-body{margin:0;background:#1a0033;overflow:hidden;display:flex;justify-content:center;align-items:center;height:100vh}
-canvas{display:block;image-rendering:pixelated}
+body{margin:0;background:#1a0033;overflow:hidden;display:flex;justify-content:center;align-items:center;height:100vh;touch-action:manipulation;-webkit-user-select:none;user-select:none}
+canvas{display:block;image-rendering:pixelated;touch-action:none}
 </style>
 </head>
 <body>
@@ -41,6 +41,14 @@ const FROG_COMMENTS={
 }
 let commentText="",commentStart=0,commentDone=true
 let viewingPhoto=-1
+const BUTTONS=[
+  {x:1,y:49,w:7,h:4,label:"◀",action:"filterLeft",bg:[80,0,120]},
+  {x:9,y:49,w:7,h:4,label:"▶",action:"filterRight",bg:[80,0,120]},
+  {x:22,y:49,w:7,h:4,label:"▲",action:"sceneryUp",bg:[0,80,120]},
+  {x:30,y:49,w:7,h:4,label:"▼",action:"sceneryDown",bg:[0,80,120]},
+  {x:48,y:49,w:18,h:4,label:"RESET",action:"reset",bg:[120,0,0]},
+  {x:10,y:55,w:60,h:5,label:"SNAP",action:"snap",bg:[0,120,0]},
+]
 
 function preload(){frogImg=loadImage("../tokodok.png")}
 
@@ -227,8 +235,14 @@ function draw(){
     let last=photos[photos.length-1]
     fill(255,0,170,200)
     textAlign(CENTER,CENTER);textSize(S*0.75)
-    text(last.label,40*S,58*S)
+    text(last.label,40*S,53.7*S)
     textSize(S)
+  }
+  for(let b of BUTTONS){
+    fill(b.bg);stroke(255,0,170,60);strokeWeight(max(ceil(S/12),1))
+    rect(b.x*S,b.y*S,b.w*S,b.h*S);noStroke()
+    fill(255);textAlign(CENTER,CENTER);textSize(b.action==="snap"?S*1.2:S*0.7)
+    text(b.label,(b.x+b.w/2)*S,(b.y+b.h/2)*S)
   }
   pop()
   
@@ -285,9 +299,30 @@ function mousePressed(){
       viewingPhoto=i;return false
     }
   }
+  for(let b of BUTTONS){
+    let bx=ox+b.x*S,by=oy+b.y*S
+    if(mouseX>=bx&&mouseX<=bx+b.w*S&&mouseY>=by&&mouseY<=by+b.h*S){
+      btnAction(b.action);return false
+    }
+  }
   return moveFrog()
 }
 function mouseDragged(){return moveFrog()}
+function touchStarted(){mousePressed();return false}
+function btnAction(a){
+  if(a==="filterLeft"||a==="filterRight"){
+    if(shutterFlash>0)return
+    filterIdx=a==="filterRight"?(filterIdx+1)%FILTERS.length:(filterIdx-1+FILTERS.length)%FILTERS.length
+    gaugeSpeed=filterIdx===1?5:filterIdx===4?random(1,10):2
+    playFilterSound()
+  }else if(a==="sceneryUp"){sceneryIdx=(sceneryIdx+1)%SCENERIES.length
+  }else if(a==="sceneryDown"){sceneryIdx=(sceneryIdx-1+SCENERIES.length)%SCENERIES.length
+  }else if(a==="snap"){if(shutterFlash===0&&!showingResult&&photos.length<6)takePhoto()
+  }else if(a==="reset"){
+    photos=[];likes=0;gaugePos=50;showingResult=false
+    shutterFlash=0;shockwave=0;commentDone=true
+  }
+}
 function moveFrog(){
   let ox=(width-W*S)/2,oy=(height-H*S)/2,vx=8,vy=10,vw=64,vh=18
   let vfX=ox+vx*S,vfY=oy+vy*S,vfW=vw*S,vfH=vh*S
